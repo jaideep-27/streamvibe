@@ -9,12 +9,13 @@ const UploadForm = () => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    thumbnail: null,
-    video: null
+    video: null,
+    thumbnail: null
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [preview, setPreview] = useState(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -26,150 +27,207 @@ const UploadForm = () => {
 
   const handleFileChange = (e) => {
     const { name, files } = e.target;
-    if (name === 'thumbnail' && files[0]) {
-      setPreview(URL.createObjectURL(files[0]));
+    if (files && files[0]) {
+      setFormData(prev => ({
+        ...prev,
+        [name]: files[0]
+      }));
+
+      if (name === 'thumbnail') {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setThumbnailPreview(reader.result);
+        };
+        reader.readAsDataURL(files[0]);
+      }
     }
-    setFormData(prev => ({
-      ...prev,
-      [name]: files[0]
-    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-
-    const data = new FormData();
-    data.append('title', formData.title);
-    data.append('description', formData.description);
-    data.append('thumbnail', formData.thumbnail);
-    data.append('video', formData.video);
+    setUploadProgress(0);
 
     try {
-      await axios.post(`${API_URL}/api/videos`, data, {
+      const data = new FormData();
+      data.append('title', formData.title);
+      data.append('description', formData.description);
+      if (formData.video) data.append('video', formData.video);
+      if (formData.thumbnail) data.append('thumbnail', formData.thumbnail);
+
+      const response = await axios.post(`${API_URL}/api/videos`, data, {
         headers: {
           'Content-Type': 'multipart/form-data'
+        },
+        onUploadProgress: (progressEvent) => {
+          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(progress);
         }
       });
-      navigate('/');
-    } catch (error) {
-      setError(error.response?.data?.message || 'Error uploading video');
+
+      if (response.data) {
+        navigate('/');
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      setError(err.response?.data?.message || 'Error uploading video. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto mt-10 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-xl p-8">
-        <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Upload Your Video</h2>
+    <div className="container mx-auto px-4 py-8 max-w-2xl animate-fade-in">
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">Upload Your Video</h1>
+        
         {error && (
-          <div className="bg-red-50 text-red-500 p-4 rounded-lg mb-6 animate-fade-in">
+          <div className="bg-red-50 text-red-500 p-4 rounded-lg mb-6">
             {error}
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-gray-700 font-medium mb-2">Title</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Title
+            </label>
             <input
               type="text"
               name="title"
-              maxLength={50}
               value={formData.title}
               onChange={handleInputChange}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              maxLength="50"
               required
-              placeholder="Enter video title"
             />
-            <p className="text-sm text-gray-500 mt-1">
-              {formData.title.length}/50 characters
-            </p>
+            <p className="text-sm text-gray-500 mt-1">{formData.title.length}/50 characters</p>
           </div>
 
           <div>
-            <label className="block text-gray-700 font-medium mb-2">Description</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Description
+            </label>
             <textarea
               name="description"
-              maxLength={200}
               value={formData.description}
               onChange={handleInputChange}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all h-32"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              rows="4"
+              maxLength="200"
               required
-              placeholder="Enter video description"
             />
-            <p className="text-sm text-gray-500 mt-1">
-              {formData.description.length}/200 characters
-            </p>
+            <p className="text-sm text-gray-500 mt-1">{formData.description.length}/200 characters</p>
           </div>
 
           <div>
-            <label className="block text-gray-700 font-medium mb-2">Thumbnail</label>
-            <div className="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-primary-500 transition-colors">
-              <div className="space-y-1 text-center">
-                {preview ? (
-                  <img src={preview} alt="Preview" className="mx-auto h-32 w-32 object-cover rounded-lg" />
-                ) : (
-                  <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Thumbnail
+            </label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
+              {thumbnailPreview ? (
+                <div className="relative">
+                  <img
+                    src={thumbnailPreview}
+                    alt="Thumbnail preview"
+                    className="mx-auto max-h-48 rounded-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setThumbnailPreview('');
+                      setFormData(prev => ({ ...prev, thumbnail: null }));
+                    }}
+                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="file"
+                    name="thumbnail"
+                    onChange={handleFileChange}
+                    accept="image/png,image/jpeg"
+                    className="hidden"
+                    id="thumbnail-upload"
+                    required
+                  />
+                  <label
+                    htmlFor="thumbnail-upload"
+                    className="cursor-pointer text-gray-600 hover:text-primary-600"
+                  >
+                    <div className="flex flex-col items-center">
+                      <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      <span>Upload a file or drag and drop</span>
+                      <span className="text-sm text-gray-500">PNG, JPG up to 10MB</span>
+                    </div>
+                  </label>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Video
+            </label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
+              <input
+                type="file"
+                name="video"
+                onChange={handleFileChange}
+                accept="video/mp4,video/avi"
+                className="hidden"
+                id="video-upload"
+                required
+              />
+              <label
+                htmlFor="video-upload"
+                className="cursor-pointer text-gray-600 hover:text-primary-600"
+              >
+                <div className="flex flex-col items-center">
+                  <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                )}
-                <div className="flex text-sm text-gray-600">
-                  <label className="relative cursor-pointer bg-white rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500">
-                    <span>Upload a file</span>
-                    <input
-                      type="file"
-                      name="thumbnail"
-                      accept=".jpg,.jpeg,.png"
-                      onChange={handleFileChange}
-                      className="sr-only"
-                      required
-                    />
-                  </label>
-                  <p className="pl-1">or drag and drop</p>
+                  <span>{formData.video ? formData.video.name : 'Upload a file or drag and drop'}</span>
+                  <span className="text-sm text-gray-500">MP4, AVI up to 100MB</span>
                 </div>
-                <p className="text-xs text-gray-500">PNG, JPG up to 10MB</p>
-              </div>
+              </label>
             </div>
           </div>
 
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">Video</label>
-            <div className="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-primary-500 transition-colors">
-              <div className="space-y-1 text-center">
-                <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                  <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <div className="flex text-sm text-gray-600">
-                  <label className="relative cursor-pointer bg-white rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500">
-                    <span>Upload a file</span>
-                    <input
-                      type="file"
-                      name="video"
-                      accept=".mpg,.avi,.mp4"
-                      onChange={handleFileChange}
-                      className="sr-only"
-                      required
-                    />
-                  </label>
-                  <p className="pl-1">or drag and drop</p>
-                </div>
-                <p className="text-xs text-gray-500">MPG, AVI, MP4 up to 100MB</p>
-              </div>
+          {loading && (
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div
+                className="bg-primary-600 h-2.5 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              ></div>
+              <p className="text-sm text-gray-600 text-center mt-2">Uploading... {uploadProgress}%</p>
             </div>
-          </div>
+          )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-primary-600 to-secondary-600 text-white py-3 px-4 rounded-lg font-medium hover:opacity-90 transition-opacity duration-300 disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5"
+            className={`w-full py-3 px-4 rounded-lg text-white font-medium ${
+              loading
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800'
+            } transition-colors duration-300`}
           >
             {loading ? (
-              <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></div>
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
                 Uploading...
-              </div>
+              </span>
             ) : (
               'Upload Video'
             )}
