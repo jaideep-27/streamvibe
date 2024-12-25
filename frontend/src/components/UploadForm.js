@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB in bytes
+
 const UploadForm = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -14,13 +16,47 @@ const UploadForm = () => {
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  const validateFile = (file, type) => {
+    if (!file) return null;
+
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
+      return `${type} file size is too large. Maximum size is 100MB.`;
+    }
+
+    // Check file type
+    if (type === 'video') {
+      const validTypes = ['video/mp4', 'video/avi', 'video/quicktime'];
+      if (!validTypes.includes(file.type)) {
+        return 'Invalid video format. Only MP4, AVI, and MOV are allowed.';
+      }
+    } else if (type === 'thumbnail') {
+      const validTypes = ['image/jpeg', 'image/png'];
+      if (!validTypes.includes(file.type)) {
+        return 'Invalid image format. Only JPG and PNG are allowed.';
+      }
+    }
+
+    return null;
+  };
+
   const handleFileChange = (e) => {
     const { name, files } = e.target;
     if (files && files[0]) {
+      const file = files[0];
+      const error = validateFile(file, name);
+      
+      if (error) {
+        setError(error);
+        e.target.value = ''; // Reset file input
+        return;
+      }
+
       setFormData(prev => ({
         ...prev,
-        [name]: files[0]
+        [name]: file
       }));
+      setError(''); // Clear any previous errors
     }
   };
 
@@ -39,6 +75,14 @@ const UploadForm = () => {
     setUploadProgress(0);
 
     try {
+      // Validate files again before upload
+      const videoError = validateFile(formData.video, 'video');
+      const thumbnailError = validateFile(formData.thumbnail, 'thumbnail');
+      
+      if (videoError || thumbnailError) {
+        throw new Error(videoError || thumbnailError);
+      }
+
       if (!formData.video || !formData.thumbnail) {
         throw new Error('Please select both video and thumbnail files');
       }
@@ -50,6 +94,18 @@ const UploadForm = () => {
       data.append('thumbnail', formData.thumbnail);
 
       console.log('Starting upload to:', `${process.env.REACT_APP_API_URL}/api/videos`);
+      console.log('Files being uploaded:', {
+        video: {
+          name: formData.video.name,
+          size: formData.video.size,
+          type: formData.video.type
+        },
+        thumbnail: {
+          name: formData.thumbnail.name,
+          size: formData.thumbnail.size,
+          type: formData.thumbnail.type
+        }
+      });
       
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/videos`, data, {
         headers: {
@@ -59,7 +115,8 @@ const UploadForm = () => {
           const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           setUploadProgress(progress);
           console.log('Upload progress:', progress);
-        }
+        },
+        timeout: 300000 // 5 minutes timeout
       });
 
       console.log('Upload response:', response.data);
@@ -68,12 +125,16 @@ const UploadForm = () => {
       console.error('Upload error details:', err.response?.data || err.message);
       let errorMessage = 'Error uploading video. ';
       
-      if (err.response?.data?.message) {
-        errorMessage += err.response.data.message;
+      if (err.message) {
+        errorMessage = err.message;
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
       } else if (err.message.includes('Network Error')) {
-        errorMessage += 'Network error. Please check your connection.';
+        errorMessage = 'Network error. Please check your connection.';
       } else if (err.response?.status === 413) {
-        errorMessage += 'File size too large. Maximum size is 100MB.';
+        errorMessage = 'File size too large. Maximum size is 100MB.';
+      } else if (err.code === 'ECONNABORTED') {
+        errorMessage = 'Upload timed out. Please try again with a smaller file.';
       } else {
         errorMessage += 'Please try again.';
       }
@@ -81,6 +142,7 @@ const UploadForm = () => {
       setError(errorMessage);
     } finally {
       setLoading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -145,7 +207,7 @@ const UploadForm = () => {
                   type="file"
                   name="thumbnail"
                   onChange={handleFileChange}
-                  accept="image/*"
+                  accept="image/jpeg,image/png"
                   className="hidden"
                   id="thumbnail-upload"
                   required
@@ -184,7 +246,7 @@ const UploadForm = () => {
                   type="file"
                   name="video"
                   onChange={handleFileChange}
-                  accept="video/mp4,video/avi"
+                  accept="video/mp4,video/avi,video/quicktime"
                   className="hidden"
                   id="video-upload"
                   required
@@ -198,7 +260,7 @@ const UploadForm = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
                     <span>Upload a file or drag and drop</span>
-                    <span className="text-sm text-gray-500">MP4, AVI up to 100MB</span>
+                    <span className="text-sm text-gray-500">MP4, AVI, MOV up to 100MB</span>
                   </div>
                 </label>
               </div>
