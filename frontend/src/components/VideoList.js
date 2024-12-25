@@ -9,8 +9,11 @@ const VideoList = () => {
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchVideos = async () => {
       try {
+        if (!isMounted) return;
         setLoading(true);
         setError('');
         
@@ -22,6 +25,7 @@ const VideoList = () => {
           if (retryCount < 3) {
             // Wait for 5 seconds before retrying
             await new Promise(resolve => setTimeout(resolve, 5000));
+            if (!isMounted) return;
             setRetryCount(prev => prev + 1);
             throw new Error('SERVER_STARTING');
           }
@@ -29,28 +33,35 @@ const VideoList = () => {
 
         const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/videos`);
         console.log('Videos fetched successfully:', response.data);
+        if (!isMounted) return;
         setVideos(response.data);
         setRetryCount(0); // Reset retry count on success
-      } catch (error) {
-        console.error('Error fetching videos:', error);
-        if (error.message === 'SERVER_STARTING') {
+      } catch (err) {
+        console.error('Error fetching videos:', err);
+        if (!isMounted) return;
+        if (err.message === 'SERVER_STARTING') {
           setError('Server is starting up, please wait...');
           setLoading(true);
           return; // This will trigger another retry
-        } else if (!error.response) {
+        } else if (!err.response) {
           setError('Cannot connect to server. Please check your internet connection.');
         } else {
           setError('Error fetching videos. Please try again later.');
         }
       } finally {
-        if (error?.message !== 'SERVER_STARTING') {
+        if (!isMounted) return;
+        if (!error?.message?.includes('SERVER_STARTING')) {
           setLoading(false);
         }
       }
     };
 
     fetchVideos();
-  }, [retryCount]); // Add retryCount as dependency to trigger retries
+
+    return () => {
+      isMounted = false;
+    };
+  }, [retryCount, error?.message]); // Added error?.message as dependency
 
   if (loading) {
     return (
