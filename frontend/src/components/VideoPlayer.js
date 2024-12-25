@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useParams, Link } from 'react-router-dom';
+import axios from '../config/axios';
 
 const VideoPlayer = () => {
   const { id } = useParams();
@@ -11,7 +11,7 @@ const VideoPlayer = () => {
   useEffect(() => {
     const fetchVideo = async () => {
       try {
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/videos/${id}`);
+        const response = await axios.get(`/api/videos/${id}`);
         setVideo(response.data);
       } catch (error) {
         console.error('Error fetching video:', error);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Link } from 'react-router-dom';
+import axios from '../config/axios';
 
 const VideoList = () => {
   const [videos, setVideos] = useState([]);
