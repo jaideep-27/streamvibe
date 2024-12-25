@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-
 const VideoList = () => {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +16,7 @@ const VideoList = () => {
         
         // Try to ping the server first
         try {
-          await axios.get(API_URL);
+          await axios.get(process.env.REACT_APP_API_URL);
         } catch (pingError) {
           console.log('Server ping failed, might be starting up:', pingError);
           if (retryCount < 3) {
@@ -29,7 +27,7 @@ const VideoList = () => {
           }
         }
 
-        const response = await axios.get(`${API_URL}/api/videos`);
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/videos`);
         console.log('Videos fetched successfully:', response.data);
         setVideos(response.data);
         setRetryCount(0); // Reset retry count on success
