@@ -93,7 +93,8 @@ const UploadForm = () => {
       data.append('video', formData.video);
       data.append('thumbnail', formData.thumbnail);
 
-      console.log('Starting upload to:', `${process.env.REACT_APP_API_URL}/api/videos`);
+      const apiUrl = `${process.env.REACT_APP_API_URL}/api/videos`;
+      console.log('Starting upload to:', apiUrl);
       console.log('Files being uploaded:', {
         video: {
           name: formData.video.name,
@@ -106,8 +107,19 @@ const UploadForm = () => {
           type: formData.thumbnail.type
         }
       });
+
+      // First, try to ping the server
+      try {
+        const pingResponse = await axios.get(process.env.REACT_APP_API_URL);
+        console.log('Server is responsive:', pingResponse.status);
+      } catch (pingError) {
+        console.error('Server ping failed:', pingError);
+        if (!pingError.response) {
+          throw new Error('Cannot connect to server. It might be starting up - please wait a minute and try again.');
+        }
+      }
       
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/videos`, data, {
+      const response = await axios.post(apiUrl, data, {
         headers: {
           'Content-Type': 'multipart/form-data'
         },
@@ -116,13 +128,28 @@ const UploadForm = () => {
           setUploadProgress(progress);
           console.log('Upload progress:', progress);
         },
-        timeout: 300000 // 5 minutes timeout
+        timeout: 300000, // 5 minutes timeout
+        validateStatus: function (status) {
+          return status >= 200 && status < 500; // Don't reject if status is not 2xx
+        }
       });
 
-      console.log('Upload response:', response.data);
+      if (response.status !== 201) {
+        console.error('Upload response:', response);
+        throw new Error(`Server returned status ${response.status}: ${response.data?.message || 'Unknown error'}`);
+      }
+
+      console.log('Upload successful:', response.data);
       navigate('/');
     } catch (err) {
-      console.error('Upload error details:', err.response?.data || err.message);
+      console.error('Upload error:', err);
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        headers: err.response?.headers
+      });
+
       let errorMessage = 'Error uploading video. ';
       
       if (err.message) {
@@ -130,11 +157,11 @@ const UploadForm = () => {
       } else if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
       } else if (err.message.includes('Network Error')) {
-        errorMessage = 'Network error. Please check your connection.';
+        errorMessage = 'Network error. The server might be starting up - please wait a minute and try again.';
       } else if (err.response?.status === 413) {
         errorMessage = 'File size too large. Maximum size is 100MB.';
       } else if (err.code === 'ECONNABORTED') {
-        errorMessage = 'Upload timed out. Please try again with a smaller file.';
+        errorMessage = 'Upload timed out. Please try again with a smaller file or check your connection.';
       } else {
         errorMessage += 'Please try again.';
       }
