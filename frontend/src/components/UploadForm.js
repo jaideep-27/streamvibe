@@ -4,6 +4,30 @@ import { useNavigate } from 'react-router-dom';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
+const FilePreview = ({ file, onRemove, type }) => (
+  <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+    <div className="flex items-center">
+      <svg className="w-6 h-6 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {type === 'video' ? (
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        ) : (
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        )}
+      </svg>
+      <span className="font-medium text-gray-700">{file.name}</span>
+    </div>
+    <button
+      type="button"
+      onClick={onRemove}
+      className="text-red-500 hover:text-red-700"
+    >
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+);
+
 const UploadForm = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -50,28 +74,46 @@ const UploadForm = () => {
     setUploadProgress(0);
 
     try {
+      if (!formData.video || !formData.thumbnail) {
+        throw new Error('Please select both video and thumbnail files');
+      }
+
       const data = new FormData();
       data.append('title', formData.title);
       data.append('description', formData.description);
-      if (formData.video) data.append('video', formData.video);
-      if (formData.thumbnail) data.append('thumbnail', formData.thumbnail);
+      data.append('video', formData.video);
+      data.append('thumbnail', formData.thumbnail);
 
-      const response = await axios.post(`${API_URL}/api/videos`, data, {
+      console.log('Starting upload to:', `${process.env.REACT_APP_API_URL}/api/videos`);
+      
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/videos`, data, {
         headers: {
           'Content-Type': 'multipart/form-data'
         },
         onUploadProgress: (progressEvent) => {
           const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           setUploadProgress(progress);
+          console.log('Upload progress:', progress);
         }
       });
 
-      if (response.data) {
-        navigate('/');
-      }
+      console.log('Upload response:', response.data);
+      navigate('/');
     } catch (err) {
-      console.error('Upload error:', err);
-      setError(err.response?.data?.message || 'Error uploading video. Please try again.');
+      console.error('Upload error details:', err.response?.data || err.message);
+      let errorMessage = 'Error uploading video. ';
+      
+      if (err.response?.data?.message) {
+        errorMessage += err.response.data.message;
+      } else if (err.message.includes('Network Error')) {
+        errorMessage += 'Network error. Please check your connection.';
+      } else if (err.response?.status === 413) {
+        errorMessage += 'File size too large. Maximum size is 100MB.';
+      } else {
+        errorMessage += 'Please try again.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -125,27 +167,15 @@ const UploadForm = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Thumbnail
             </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
-              {thumbnailPreview ? (
-                <div className="relative">
-                  <img
-                    src={thumbnailPreview}
-                    alt="Thumbnail preview"
-                    className="mx-auto max-h-48 rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setThumbnailPreview('');
-                      setFormData(prev => ({ ...prev, thumbnail: null }));
-                    }}
-                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
-                  >
-                    ×
-                  </button>
-                </div>
+            <div className="space-y-4">
+              {formData.thumbnail ? (
+                <FilePreview
+                  file={formData.thumbnail}
+                  type="image"
+                  onRemove={() => setFormData(prev => ({ ...prev, thumbnail: null }))}
+                />
               ) : (
-                <>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
                   <input
                     type="file"
                     name="thumbnail"
@@ -167,7 +197,7 @@ const UploadForm = () => {
                       <span className="text-sm text-gray-500">PNG, JPG up to 10MB</span>
                     </div>
                   </label>
-                </>
+                </div>
               )}
             </div>
           </div>
@@ -176,28 +206,38 @@ const UploadForm = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Video
             </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
-              <input
-                type="file"
-                name="video"
-                onChange={handleFileChange}
-                accept="video/mp4,video/avi"
-                className="hidden"
-                id="video-upload"
-                required
-              />
-              <label
-                htmlFor="video-upload"
-                className="cursor-pointer text-gray-600 hover:text-primary-600"
-              >
-                <div className="flex flex-col items-center">
-                  <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  <span>{formData.video ? formData.video.name : 'Upload a file or drag and drop'}</span>
-                  <span className="text-sm text-gray-500">MP4, AVI up to 100MB</span>
+            <div className="space-y-4">
+              {formData.video ? (
+                <FilePreview
+                  file={formData.video}
+                  type="video"
+                  onRemove={() => setFormData(prev => ({ ...prev, video: null }))}
+                />
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
+                  <input
+                    type="file"
+                    name="video"
+                    onChange={handleFileChange}
+                    accept="video/mp4,video/avi"
+                    className="hidden"
+                    id="video-upload"
+                    required
+                  />
+                  <label
+                    htmlFor="video-upload"
+                    className="cursor-pointer text-gray-600 hover:text-primary-600"
+                  >
+                    <div className="flex flex-col items-center">
+                      <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      <span>Upload a file or drag and drop</span>
+                      <span className="text-sm text-gray-500">MP4, AVI up to 100MB</span>
+                    </div>
+                  </label>
                 </div>
-              </label>
+              )}
             </div>
           </div>
 
