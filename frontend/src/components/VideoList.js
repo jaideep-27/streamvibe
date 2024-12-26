@@ -70,6 +70,15 @@ const VideoList = () => {
             </Link>
             <div className="p-4">
               <p className="text-gray-600 text-sm mb-4 line-clamp-2">{video.description || 'No description available'}</p>
+              <Link 
+                to={`/video/${video._id}`}
+                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-medium rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all duration-200"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                </svg>
+                Watch Video
+              </Link>
             </div>
           </div>
         ))}
