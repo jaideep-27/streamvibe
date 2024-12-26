@@ -13,6 +13,7 @@ const UploadForm = () => {
   const [thumbnailFile, setThumbnailFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
   const navigate = useNavigate();
 
   const validateFile = (file, allowedTypes, maxSize = MAX_FILE_SIZE) => {
@@ -56,6 +57,7 @@ const UploadForm = () => {
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           console.log('Upload progress:', percentCompleted);
+          setUploadProgress(percentCompleted);
         },
       });
       console.log('Upload successful:', response.data);
@@ -155,6 +157,17 @@ const UploadForm = () => {
             <p className="mt-1 text-sm text-gray-500">Accepted formats: MP4, AVI, MPG (max 100MB)</p>
           </div>
 
+          {loading && (
+            <div className="mb-4">
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div 
+                  className="bg-gradient-to-r from-primary-600 to-secondary-600 h-2.5 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+              <p className="text-center text-sm text-gray-600 mt-2">Uploading: {uploadProgress}%</p>
+            </div>
+          )}
           <button
             type="submit"
             disabled={loading}
