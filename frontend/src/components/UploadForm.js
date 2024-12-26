@@ -13,6 +13,7 @@ const UploadForm = () => {
   const [error, setError] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
   const navigate = useNavigate();
 
   const validateFile = (file, allowedTypes, maxSize = MAX_FILE_SIZE) => {
@@ -48,15 +49,13 @@ const UploadForm = () => {
       formData.append('video', videoFile);
       formData.append('thumbnail', thumbnailFile);
 
-      console.log('Starting upload...');
       const response = await axios.post('/api/videos', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          console.log('Upload progress:', percentCompleted);
-          // Removed setUploadProgress(percentCompleted);
+          setUploadProgress(percentCompleted);
         },
       });
       console.log('Upload successful:', response.data);
@@ -145,6 +144,19 @@ const UploadForm = () => {
           />
           <p className="mt-1 text-sm text-gray-500">Accepted formats: JPG, PNG, GIF (max 5MB)</p>
         </div>
+        
+        {loading && (
+          <div className="mb-4">
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-gradient-to-r from-purple-500 to-indigo-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              ></div>
+            </div>
+            <p className="text-center text-sm text-gray-600 mt-2">Uploading: {uploadProgress}%</p>
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={loading}
