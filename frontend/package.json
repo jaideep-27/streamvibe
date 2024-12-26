@@ -17,7 +17,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "set \"CI=false\" && set \"GENERATE_SOURCEMAP=false\" && react-scripts build",
+    "build": "set \"CI=false\" && set \"GENERATE_SOURCEMAP=false\" && react-scripts build --max-old-space-size=4096",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

@@ -13,7 +13,6 @@ const UploadForm = () => {
   const [thumbnailFile, setThumbnailFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
   const navigate = useNavigate();
 
   const validateFile = (file, allowedTypes, maxSize = MAX_FILE_SIZE) => {
@@ -41,7 +40,6 @@ const UploadForm = () => {
     }
 
     setLoading(true);
-    setIsUploading(true);
 
     try {
       const formData = new FormData();
@@ -65,7 +63,6 @@ const UploadForm = () => {
     } catch (error) {
       console.error('Upload error:', error.response?.data || error.message);
       setError(error.response?.data?.message || 'Error uploading video. Please try again.');
-      setIsUploading(false);
     } finally {
       setLoading(false);
     }
