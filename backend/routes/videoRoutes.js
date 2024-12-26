@@ -19,10 +19,10 @@ const upload = multer({
         cb(new Error('Invalid image format. Only JPG and PNG are allowed.'));
       }
     } else if (file.fieldname === 'video') {
-      if (file.mimetype === 'video/mp4' || file.mimetype === 'video/avi' || file.mimetype === 'video/quicktime') {
+      if (file.mimetype === 'video/mp4' || file.mimetype === 'video/avi' || file.mimetype === 'video/mpeg') {
         cb(null, true);
       } else {
-        cb(new Error('Invalid video format. Only MP4, AVI, and MOV are allowed.'));
+        cb(new Error('Invalid video format. Only MP4, AVI, and MPG are allowed.'));
       }
     }
   }
@@ -141,6 +141,13 @@ router.post('/', upload.fields([
     res.status(201).json(video);
   } catch (error) {
     console.error('Error in upload process:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      http_code: error.http_code,
+      stack: error.stack
+    });
+    
     let errorMessage = 'Error uploading video. ';
     
     if (error.message.includes('Invalid video format')) {
