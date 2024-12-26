@@ -46,7 +46,7 @@ A modern video sharing platform built with React, Node.js, MongoDB, and Cloudina
        - `CLOUDINARY_API_KEY`: Your Cloudinary API key
        - `CLOUDINARY_API_SECRET`: Your Cloudinary API secret
      - Frontend `.env`:
-       - `REACT_APP_API_URL`: Your backend API URL (default: http://localhost:5000)
+       - `REACT_APP_API_URL`: Your backend API URL
 
 4. Start the development servers:
    ```bash
@@ -56,10 +56,6 @@ A modern video sharing platform built with React, Node.js, MongoDB, and Cloudina
    # Start frontend server (from frontend directory)
    npm start
    ```
-
-5. Access the application:
-   - Frontend: http://localhost:3000
-   - Backend: http://localhost:5000
 
 ## Deployment
 

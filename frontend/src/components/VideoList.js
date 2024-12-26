@@ -19,7 +19,7 @@ const VideoList = () => {
         
         // Try to ping the server first
         try {
-          await axios.get(process.env.REACT_APP_API_URL);
+          await axios.get('https://streamvibe-backend-0qc6.onrender.com');
         } catch (pingError) {
           console.log('Server ping failed, might be starting up:', pingError);
           if (retryCount < 3) {
@@ -31,7 +31,7 @@ const VideoList = () => {
           }
         }
 
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/videos`);
+        const response = await axios.get(`https://streamvibe-backend-0qc6.onrender.com/api/videos`);
         console.log('Videos fetched successfully:', response.data);
         if (!isMounted) return;
         setVideos(response.data);

@@ -48,7 +48,7 @@ const UploadForm = () => {
       formData.append('video', videoFile);
       formData.append('thumbnail', thumbnailFile);
 
-      await axios.post(`${process.env.REACT_APP_API_URL}/api/videos/upload`, formData, {
+      await axios.post(`https://streamvibe-backend-0qc6.onrender.com/api/videos/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
